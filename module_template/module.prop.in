@@ -1,0 +1,6 @@
+id=otbridge_privileged
+name=OTBridge Privileged
+version=@VERSION@
+versionCode=@VERSION_CODE@
+author=ieb
+description=Systemless install of ee.nekoko.nbridge as a privileged bridge app for OMAPI and TMAPI.

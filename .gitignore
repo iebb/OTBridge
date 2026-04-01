@@ -1,0 +1,8 @@
+.DS_Store
+build/
+dist/
+tmp/
+*.zip
+*.apk
+*.apks
+module_template/system/priv-app/ee.nekoko.nbridge/NBridge.apk

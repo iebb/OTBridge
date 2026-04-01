@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.NBridge" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:statusBarColor">?attr/colorSurfaceContainer</item>
+        <item name="android:navigationBarColor">?attr/colorSurface</item>
+        <item name="android:windowBackground">?attr/colorSurface</item>
+        <item name="materialSwitchStyle">@style/Widget.NBridge.Switch</item>
+    </style>
+
+    <style name="Widget.NBridge.Switch" parent="Widget.Material3.CompoundButton.MaterialSwitch">
+        <item name="trackTint">?attr/colorOutline</item>
+        <item name="thumbTint">?attr/colorPrimary</item>
+    </style>
+</resources>

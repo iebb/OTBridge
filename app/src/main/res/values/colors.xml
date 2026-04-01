@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="screen_background">#F4F1E8</color>
+    <color name="hero_surface">#FFF8E6</color>
+    <color name="hero_stroke">#E7D8A8</color>
+    <color name="panel_surface">#FFFFFC</color>
+    <color name="panel_stroke">#E8E0CE</color>
+    <color name="text_primary">#1F1D17</color>
+    <color name="text_secondary">#5B5647</color>
+    <color name="text_muted">#8A826F</color>
+    <color name="badge_tmapi">#0C8B7D</color>
+    <color name="badge_omapi">#D98A00</color>
+</resources>

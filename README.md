@@ -1,24 +1,64 @@
 # OTBridge
 
-Systemless Magisk/KernelSU module project for installing `ee.nekoko.nbridge` as a privileged app.
+`OTBridge` contains both:
 
-## What it does
+- the Android source for `ee.nekoko.nbridge`
+- the Magisk/KernelSU module project that installs it as a privileged app
 
-- mounts `ee.nekoko.nbridge` into `/system/priv-app/ee.nekoko.nbridge/NBridge.apk`
-- installs the required privileged permission XML
-- works as a source project for generating a flashable Magisk/KernelSU zip
+The app exposes OMAPI and TMAPI through:
 
-This repository does not ship a prebuilt APK in source control. You provide the `NBridge.apk` when building the module zip.
+- `content://ee.nekoko.nbridge.provider`
 
-## Build
+## Android App
 
-Requirements:
+Package:
 
-- `bash`
-- `zip`
-- a built `ee.nekoko.nbridge` APK
+- `ee.nekoko.nbridge`
 
-Build a module zip from an APK:
+Provider methods:
+
+- `listSlots`
+- `listActiveConnections`
+- `connectLogicalChannel`
+- `transmitLogical`
+- `transmitBasic`
+- `closeLogicalChannel`
+
+Slot display names:
+
+- OMAPI: `O-SIM1`, `O-SIM2`
+- TMAPI: `T-SIM1`, `T-SIM2`
+- multi-port TMAPI: `T-SIM1p1`, `T-SIM2p1`
+
+## Build The App
+
+Debug APK:
+
+```bash
+./gradlew :app:assembleDebug
+```
+
+Release APK:
+
+```bash
+./gradlew :app:assembleRelease
+```
+
+Default release output:
+
+```text
+app/build/outputs/apk/release/app-release.apk
+```
+
+## Build The Module
+
+Build from the local release APK:
+
+```bash
+./scripts/build.sh
+```
+
+Build from an explicit APK:
 
 ```bash
 ./scripts/build.sh --apk /absolute/path/to/NBridge.apk
@@ -27,31 +67,21 @@ Build a module zip from an APK:
 Optional version overrides:
 
 ```bash
-./scripts/build.sh \
-  --apk /absolute/path/to/NBridge.apk \
-  --version v1.0.0 \
-  --version-code 1
+./scripts/build.sh --version v1.0.0 --version-code 1
 ```
 
-The output zip is written to:
+Output:
 
 ```text
 build/otbridge-magisk-kernelsu.zip
 ```
 
-## Install
-
-1. Build the zip.
-2. Install it in Magisk or KernelSU.
-3. Reboot.
-
-After reboot, `ee.nekoko.nbridge` should be mounted as a priv-app and receive the privileges declared in:
-
-- `module_template/system/etc/permissions/privapp-permissions-ee.nekoko.nbridge.xml`
+The module mounts `ee.nekoko.nbridge` into `/system/priv-app/ee.nekoko.nbridge/NBridge.apk` and installs the privileged permission XML.
 
 ## Source Layout
 
-- `module_template/`: module files copied into the final zip
+- `app/`: Android bridge app source
+- `module_template/`: Magisk/KernelSU module template
 - `scripts/build.sh`: module packaging script
 
 ## License

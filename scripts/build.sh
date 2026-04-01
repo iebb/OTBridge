@@ -35,12 +35,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${APK_PATH}" ]]; then
-  echo "--apk is required" >&2
-  exit 1
+  APK_PATH="${ROOT_DIR}/app/build/outputs/apk/release/app-release.apk"
+  if [[ ! -f "${APK_PATH}" ]]; then
+    "${ROOT_DIR}/gradlew" :app:assembleRelease
+  fi
 fi
 
 if [[ ! -f "${APK_PATH}" ]]; then
-  echo "APK not found: ${APK_PATH}" >&2
+  echo "APK not found after build attempt: ${APK_PATH}" >&2
   exit 1
 fi
 

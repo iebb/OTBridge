@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NBridge</string>
+    <string name="main_title">NBridge</string>
+    <string name="main_subtitle">Secure-element bridge and slot control for Nekoko apps</string>
+    <string name="provider_status_label">Provider</string>
+    <string name="provider_status_active">OMAPI and provider ready</string>
+    <string name="provider_status_partial">Provider ready, OMAPI unavailable</string>
+    <string name="provider_status_inactive">No readable slots</string>
+    <string name="slot_count_label">Enabled Slots</string>
+    <string name="slot_count_value">%1$d / %2$d</string>
+    <string name="slot_section_title">Slot Access</string>
+    <string name="slot_section_subtitle">Disable any slot you do not want exposed through the content provider.</string>
+    <string name="slot_section_subtitle_tmapi_only">Only TMAPI slots are available right now. OMAPI did not come up on this device state.</string>
+    <string name="slot_section_subtitle_empty">No readable slots were returned. Check SIM state and OMAPI service availability.</string>
+    <string name="active_connections_title">Open Channels</string>
+    <string name="active_connections_empty">No logical channels are currently open.</string>
+    <string name="active_connection_item">%1$s  •  CH %2$d  •  %3$s</string>
+    <string name="slot_position">SIM %1$d Port %2$d</string>
+    <string name="slot_state_present">Present</string>
+    <string name="slot_state_absent">Absent</string>
+    <string name="slot_state_euicc">eUICC</string>
+</resources>

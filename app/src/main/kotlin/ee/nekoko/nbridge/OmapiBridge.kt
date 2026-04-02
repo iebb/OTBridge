@@ -6,6 +6,7 @@ import android.se.omapi.Channel
 import android.se.omapi.Reader
 import android.se.omapi.SEService
 import android.se.omapi.Session
+import android.util.Log
 import androidx.annotation.RequiresApi
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -36,6 +37,7 @@ class OmapiBridge(private val context: Context) {
             .filter { it.name.startsWith("SIM") }
             .map { reader ->
                 val present = runCatching { reader.isSecureElementPresent }.getOrDefault(false)
+                Log.i(TAG, "OMAPI reader=${reader.name} present=$present")
                 val suffix = reader.name.removePrefix("SIM")
                 SlotDescriptor(
                     id = "omapi:${reader.name}",
@@ -189,4 +191,8 @@ class OmapiBridge(private val context: Context) {
         val session: Session,
         val channel: Channel,
     )
+
+    companion object {
+        private const val TAG = "OmapiBridge"
+    }
 }

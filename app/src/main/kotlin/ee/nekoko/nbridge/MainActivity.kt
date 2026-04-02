@@ -1,11 +1,15 @@
 package ee.nekoko.nbridge
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
@@ -17,16 +21,23 @@ import com.google.android.material.color.MaterialColors
 import com.google.android.material.materialswitch.MaterialSwitch
 import kotlin.concurrent.thread
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), NBridgeBackend.Listener {
     private lateinit var backend: NBridgeBackend
     private lateinit var slotContainer: LinearLayout
-    private lateinit var slotCountView: TextView
-    private lateinit var providerStatusView: TextView
+    private lateinit var openMobileStatusIconView: ImageView
+    private lateinit var openMobileStatusView: TextView
+    private lateinit var telephonyStatusIconView: ImageView
+    private lateinit var telephonyStatusView: TextView
     private lateinit var slotHintView: TextView
     private lateinit var activeConnectionsView: TextView
     private lateinit var loadingView: View
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val simRefreshRunnable = Runnable { refreshSlots() }
     @Volatile
     private var renderGeneration = 0
+    @Volatile
+    private var lastHandledSimGeneration = 0L
+    private var hasRenderedOnce = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,8 +76,10 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<ImageView>(R.id.heroIcon).setImageResource(R.mipmap.ic_launcher)
         slotContainer = findViewById(R.id.slotContainer)
-        slotCountView = findViewById(R.id.slotCount)
-        providerStatusView = findViewById(R.id.providerStatus)
+        openMobileStatusIconView = findViewById(R.id.openMobileStatusIcon)
+        openMobileStatusView = findViewById(R.id.openMobileStatus)
+        telephonyStatusIconView = findViewById(R.id.telephonyStatusIcon)
+        telephonyStatusView = findViewById(R.id.telephonyStatus)
         slotHintView = findViewById(R.id.slotHint)
         activeConnectionsView = findViewById(R.id.activeConnections)
         loadingView = findViewById(R.id.loadingView)
@@ -77,9 +90,22 @@ class MainActivity : AppCompatActivity() {
         refreshSlots()
     }
 
+    override fun onStart() {
+        super.onStart()
+        backend.addListener(this)
+    }
+
+    override fun onStop() {
+        mainHandler.removeCallbacks(simRefreshRunnable)
+        backend.removeListener(this)
+        super.onStop()
+    }
+
     private fun refreshSlots() {
         val generation = ++renderGeneration
-        loadingView.visibility = View.VISIBLE
+        if (!hasRenderedOnce) {
+            loadingView.visibility = View.VISIBLE
+        }
         thread(name = "nbridge-slot-refresh") {
             val allSlots = backend.listAllSlots()
             val activeConnections = queryActiveConnections()
@@ -87,8 +113,19 @@ class MainActivity : AppCompatActivity() {
                 if (generation != renderGeneration || isFinishing || isDestroyed) return@runOnUiThread
                 renderSlots(allSlots, activeConnections)
                 loadingView.visibility = View.GONE
+                hasRenderedOnce = true
             }
         }
+    }
+
+    override fun onSimStateChanged(action: String?, generation: Long) {
+        if (generation <= lastHandledSimGeneration) {
+            return
+        }
+        lastHandledSimGeneration = generation
+        Log.i(TAG, "SIM state change received from backend: $action (#$generation)")
+        mainHandler.removeCallbacks(simRefreshRunnable)
+        mainHandler.postDelayed(simRefreshRunnable, SIM_REFRESH_DEBOUNCE_MS)
     }
 
     private fun queryActiveConnections(): List<ActiveConnection> {
@@ -124,13 +161,20 @@ class MainActivity : AppCompatActivity() {
         allSlots: List<SlotDescriptor>,
         activeConnections: List<ActiveConnection>,
     ) {
-        val enabledSlots = allSlots.count { backend.isSlotEnabled(it.id) }
-        slotCountView.text = getString(R.string.slot_count_value, enabledSlots, allSlots.size)
-        providerStatusView.text = when {
-            allSlots.any { it.transport == "omapi" } -> getString(R.string.provider_status_active)
-            allSlots.any { it.transport == "tmapi" } -> getString(R.string.provider_status_partial)
-            else -> getString(R.string.provider_status_inactive)
-        }
+        bindTransportStatus(
+            iconView = openMobileStatusIconView,
+            textView = openMobileStatusView,
+            label = getString(R.string.transport_open_mobile),
+            slots = allSlots,
+            transport = "omapi",
+        )
+        bindTransportStatus(
+            iconView = telephonyStatusIconView,
+            textView = telephonyStatusView,
+            label = getString(R.string.transport_telephony),
+            slots = allSlots,
+            transport = "tmapi",
+        )
         slotHintView.text = when {
             allSlots.any { it.transport == "omapi" } -> getString(R.string.slot_section_subtitle)
             allSlots.any { it.transport == "tmapi" } -> getString(R.string.slot_section_subtitle_tmapi_only)
@@ -191,6 +235,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun bindTransportStatus(
+        iconView: ImageView,
+        textView: TextView,
+        label: String,
+        slots: List<SlotDescriptor>,
+        transport: String,
+    ) {
+        val transportSlots = slots.filter { it.transport == transport }
+        val total = transportSlots.size
+        val enabled = transportSlots.count { backend.isSlotEnabled(it.id) }
+        @DrawableRes val iconRes = if (enabled > 0) {
+            R.drawable.ic_status_check
+        } else {
+            R.drawable.ic_status_cross
+        }
+        iconView.setImageResource(iconRes)
+        textView.text = getString(R.string.transport_status, label, enabled, total)
+    }
+
     private fun buildSubtitle(slot: SlotDescriptor): String {
         val parts = mutableListOf<String>()
         slot.readerName?.let { parts += it }
@@ -231,5 +294,10 @@ class MainActivity : AppCompatActivity() {
             }
             else -> connection.slotId
         }
+    }
+
+    companion object {
+        private const val TAG = "NBridgeActivity"
+        private const val SIM_REFRESH_DEBOUNCE_MS = 400L
     }
 }

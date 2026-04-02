@@ -76,6 +76,29 @@ Output:
 build/otbridge-magisk-kernelsu.zip
 ```
 
+## GitHub Actions
+
+GitHub Actions builds both artifacts automatically on:
+
+- pushes to `master` or `main`
+- pull requests
+- manual workflow dispatch
+
+Uploaded workflow artifacts:
+
+- `otbridge-apk`
+- `otbridge-magisk-kernelsu`
+
+For non-PR runs, the workflow also updates the GitHub prerelease:
+
+- tag: `latest`
+- title: `Latest Build`
+
+Release assets:
+
+- `app-release.apk`
+- `otbridge-magisk-kernelsu.zip`
+
 The module mounts `ee.nekoko.nbridge` into `/system/priv-app/ee.nekoko.nbridge/NBridge.apk` and installs the privileged permission XML.
 
 ## Source Layout

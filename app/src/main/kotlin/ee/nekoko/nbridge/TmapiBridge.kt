@@ -5,7 +5,9 @@ import android.content.pm.PackageManager
 import android.content.Context
 import android.os.Build
 import android.telephony.IccOpenLogicalChannelResponse
+import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
+import android.util.Log
 import java.lang.reflect.Method
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -13,10 +15,15 @@ import java.util.concurrent.ConcurrentHashMap
 class TmapiBridge(private val context: Context) {
     private val telephonyManager: TelephonyManager =
         context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+    private val subscriptionManager: SubscriptionManager =
+        context.getSystemService(SubscriptionManager::class.java)
     private val connections = ConcurrentHashMap<String, TmapiConnection>()
 
     private val getUiccCardsInfo: Method? by lazy {
         runCatching { TelephonyManager::class.java.getMethod("getUiccCardsInfo") }.getOrNull()
+    }
+    private val getUiccSlotsInfo: Method? by lazy {
+        runCatching { TelephonyManager::class.java.getMethod("getUiccSlotsInfo") }.getOrNull()
     }
     private val iccOpenLogicalChannelBySlot: Method? by lazy {
         runCatching {
@@ -187,6 +194,8 @@ class TmapiBridge(private val context: Context) {
         }
 
         val slots = mutableListOf<SlotDescriptor>()
+        val activeSubscriptionSlots = activeSubscriptionSlotIndexes()
+        val slotCardStates = readUiccSlotCardStates()
         val cardsInfo = runCatching { getUiccCardsInfo?.invoke(telephonyManager) as? List<*> }.getOrNull()
 
         cardsInfo?.forEach { card ->
@@ -205,11 +214,26 @@ class TmapiBridge(private val context: Context) {
             ports.forEach { port ->
                 val portIndex = port["portIndex"] as Int
                 val logicalSlotIndex = port["logicalSlotIndex"] as Int
+                val isActive = (port["isActive"] as? Int) == 1
+                val present = resolvePresent(
+                    slotIndex = slotIndex,
+                    portIndex = portIndex,
+                    isActivePort = isActive,
+                    simState = simState,
+                    activeSubscriptionSlots = activeSubscriptionSlots,
+                    slotCardStates = slotCardStates,
+                )
+                Log.i(
+                    TAG,
+                    "TMAPI slot=$slotIndex port=$portIndex present=$present " +
+                        "(slotCardState=${slotCardStates[slotIndex]}, simState=$simState, " +
+                        "isActivePort=$isActive, activeSub=${activeSubscriptionSlots.contains(slotIndex)})",
+                )
                 slots += SlotDescriptor(
                     id = "tmapi:slot:$slotIndex:port:$portIndex",
                     transport = "tmapi",
                     displayName = buildDisplayName(slotIndex, portIndex, usePortSuffix),
-                    present = simState != 0,
+                    present = present,
                     slotIndex = slotIndex,
                     portIndex = portIndex,
                     logicalSlotIndex = logicalSlotIndex,
@@ -230,11 +254,25 @@ class TmapiBridge(private val context: Context) {
         }
         for (slotIndex in 0 until count) {
             val simState = runCatching { telephonyManager.getSimState(slotIndex) }.getOrDefault(0)
+            val present = resolvePresent(
+                slotIndex = slotIndex,
+                portIndex = 0,
+                isActivePort = false,
+                simState = simState,
+                activeSubscriptionSlots = activeSubscriptionSlots,
+                slotCardStates = slotCardStates,
+            )
+            Log.i(
+                TAG,
+                "TMAPI fallback slot=$slotIndex port=0 present=$present " +
+                    "(slotCardState=${slotCardStates[slotIndex]}, simState=$simState, " +
+                    "activeSub=${activeSubscriptionSlots.contains(slotIndex)})",
+            )
             slots += SlotDescriptor(
                 id = "tmapi:slot:$slotIndex:port:0",
                 transport = "tmapi",
                 displayName = buildDisplayName(slotIndex, 0, false),
-                present = simState != 0,
+                present = present,
                 slotIndex = slotIndex,
                 portIndex = 0,
                 logicalSlotIndex = slotIndex,
@@ -261,6 +299,55 @@ class TmapiBridge(private val context: Context) {
         } else {
             "T-SIM${slotIndex + 1}"
         }
+    }
+
+    private fun resolvePresent(
+        slotIndex: Int,
+        portIndex: Int,
+        isActivePort: Boolean,
+        simState: Int,
+        activeSubscriptionSlots: Set<Int>,
+        slotCardStates: Map<Int, Int>,
+    ): Boolean {
+        when (slotCardStates[slotIndex]) {
+            CARD_STATE_INFO_ABSENT -> return false
+            CARD_STATE_INFO_PRESENT,
+            CARD_STATE_INFO_RESTRICTED,
+            CARD_STATE_INFO_ERROR -> return true
+        }
+        if (activeSubscriptionSlots.contains(slotIndex)) {
+            return true
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && portIndex > 0) {
+            return isActivePort
+        }
+        return simState != TelephonyManager.SIM_STATE_ABSENT &&
+            simState != TelephonyManager.SIM_STATE_UNKNOWN
+    }
+
+    private fun activeSubscriptionSlotIndexes(): Set<Int> {
+        return runCatching {
+            subscriptionManager.activeSubscriptionInfoList.orEmpty()
+                .mapNotNull { info -> info.simSlotIndex.takeIf { it >= 0 } }
+                .toSet()
+        }.getOrDefault(emptySet())
+    }
+
+    private fun readUiccSlotCardStates(): Map<Int, Int> {
+        val slotInfos = runCatching {
+            getUiccSlotsInfo?.invoke(telephonyManager) as? Array<*>
+        }.getOrNull() ?: return emptyMap()
+        val result = mutableMapOf<Int, Int>()
+        slotInfos.forEachIndexed { slotIndex, slotInfo ->
+            if (slotInfo == null) return@forEachIndexed
+            val cardState = runCatching {
+                slotInfo.javaClass.getMethod("getCardStateInfo").invoke(slotInfo) as? Int
+            }.getOrNull()
+            if (cardState != null) {
+                result[slotIndex] = cardState
+            }
+        }
+        return result
     }
 
     fun openLogicalChannel(slotId: String, aids: List<String>): LogicalOpenResult {
@@ -388,7 +475,7 @@ class TmapiBridge(private val context: Context) {
 
     private fun readPorts(card: Any, cardClass: Class<*>, slotIndex: Int): List<Map<String, Int>> {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            return listOf(mapOf("portIndex" to 0, "logicalSlotIndex" to slotIndex))
+            return listOf(mapOf("portIndex" to 0, "logicalSlotIndex" to slotIndex, "isActive" to 0))
         }
 
         return runCatching {
@@ -400,13 +487,16 @@ class TmapiBridge(private val context: Context) {
                 val portIndex = portClass.getMethod("getPortIndex").invoke(port) as? Int ?: 0
                 val logicalSlotIndex =
                     portClass.getMethod("getLogicalSlotIndex").invoke(port) as? Int ?: slotIndex
+                val isActive =
+                    (portClass.getMethod("isActive").invoke(port) as? Boolean == true)
                 result += mapOf(
                     "portIndex" to portIndex,
                     "logicalSlotIndex" to logicalSlotIndex,
+                    "isActive" to if (isActive) 1 else 0,
                 )
             }
-            result.ifEmpty { listOf(mapOf("portIndex" to 0, "logicalSlotIndex" to slotIndex)) }
-        }.getOrDefault(listOf(mapOf("portIndex" to 0, "logicalSlotIndex" to slotIndex)))
+            result.ifEmpty { listOf(mapOf("portIndex" to 0, "logicalSlotIndex" to slotIndex, "isActive" to 0)) }
+        }.getOrDefault(listOf(mapOf("portIndex" to 0, "logicalSlotIndex" to slotIndex, "isActive" to 0)))
     }
 
     private fun sendTerminalCapabilities(slotIndex: Int, portIndex: Int) {
@@ -583,4 +673,12 @@ class TmapiBridge(private val context: Context) {
         val aid: String,
         val selectResponse: String?,
     )
+
+    companion object {
+        private const val TAG = "TmapiBridge"
+        private const val CARD_STATE_INFO_ABSENT = 1
+        private const val CARD_STATE_INFO_PRESENT = 2
+        private const val CARD_STATE_INFO_ERROR = 3
+        private const val CARD_STATE_INFO_RESTRICTED = 4
+    }
 }

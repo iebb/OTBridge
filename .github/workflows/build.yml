@@ -1,0 +1,65 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew scripts/build.sh
+
+      - name: Build release APK
+        run: ./gradlew :app:assembleRelease
+
+      - name: Package Magisk/KernelSU module
+        run: ./scripts/build.sh
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: otbridge-apk
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      - name: Upload module artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: otbridge-magisk-kernelsu
+          path: build/otbridge-magisk-kernelsu.zip
+          if-no-files-found: error
+
+      - name: Publish rolling release assets
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Build
+          prerelease: true
+          make_latest: false
+          files: |
+            app/build/outputs/apk/release/app-release.apk
+            build/otbridge-magisk-kernelsu.zip

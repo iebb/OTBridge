@@ -3,12 +3,10 @@
     <string name="app_name">NBridge</string>
     <string name="main_title">NBridge</string>
     <string name="main_subtitle">Secure-element bridge and slot control for Nekoko apps</string>
-    <string name="provider_status_label">Provider</string>
-    <string name="provider_status_active">OMAPI and provider ready</string>
-    <string name="provider_status_partial">Provider ready, OMAPI unavailable</string>
-    <string name="provider_status_inactive">No readable slots</string>
-    <string name="slot_count_label">Enabled Slots</string>
-    <string name="slot_count_value">%1$d / %2$d</string>
+    <string name="transport_section_title">Transports</string>
+    <string name="transport_status">%1$s (%2$d/%3$d)</string>
+    <string name="transport_open_mobile">Open Mobile</string>
+    <string name="transport_telephony">Telephony</string>
     <string name="slot_section_title">Slot Access</string>
     <string name="slot_section_subtitle">Disable any slot you do not want exposed through the content provider.</string>
     <string name="slot_section_subtitle_tmapi_only">Only TMAPI slots are available right now. OMAPI did not come up on this device state.</string>

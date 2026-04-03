@@ -7,11 +7,11 @@ BUILD_DIR="${ROOT_DIR}/build"
 STAGING_DIR="${BUILD_DIR}/staging"
 PRIV_APP_DIR="${STAGING_DIR}/system/priv-app/ee.nekoko.nbridge"
 PERM_DIR="${STAGING_DIR}/system/etc/permissions"
-OUT_ZIP="${BUILD_DIR}/otbridge-magisk-kernelsu.zip"
+OUT_ZIP="${BUILD_DIR}/otbridge-magisk-kernelsu-v1.1.0.zip"
 
 APK_PATH=""
-VERSION="v1.0.0"
-VERSION_CODE="1"
+VERSION="v1.1.0"
+VERSION_CODE="2"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

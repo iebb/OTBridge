@@ -67,13 +67,13 @@ Build from an explicit APK:
 Optional version overrides:
 
 ```bash
-./scripts/build.sh --version v1.0.0 --version-code 1
+./scripts/build.sh --version v1.1.0 --version-code 2
 ```
 
 Output:
 
 ```text
-build/otbridge-magisk-kernelsu.zip
+build/otbridge-magisk-kernelsu-v1.1.0.zip
 ```
 
 ## GitHub Actions
@@ -91,13 +91,13 @@ Uploaded workflow artifacts:
 
 For non-PR runs, the workflow also updates the GitHub prerelease:
 
-- tag: `latest`
-- title: `Latest Build`
+- tag: `v1.1.0`
+- title: `OTBridge v1.1.0`
 
 Release assets:
 
 - `app-release.apk`
-- `otbridge-magisk-kernelsu.zip`
+- `otbridge-magisk-kernelsu-v1.1.0.zip`
 
 The module mounts `ee.nekoko.nbridge` into `/system/priv-app/ee.nekoko.nbridge/NBridge.apk` and installs the privileged permission XML.
 

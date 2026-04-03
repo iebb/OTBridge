@@ -11,6 +11,11 @@ on:
 permissions:
   contents: write
 
+env:
+  RELEASE_TAG: v1.1.0
+  RELEASE_NAME: OTBridge v1.1.0
+  MODULE_ZIP: build/otbridge-magisk-kernelsu-v1.1.0.zip
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -49,17 +54,17 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: otbridge-magisk-kernelsu
-          path: build/otbridge-magisk-kernelsu.zip
+          path: ${{ env.MODULE_ZIP }}
           if-no-files-found: error
 
-      - name: Publish rolling release assets
+      - name: Publish versioned release assets
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: Latest Build
-          prerelease: true
-          make_latest: false
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          prerelease: false
+          make_latest: true
           files: |
             app/build/outputs/apk/release/app-release.apk
-            build/otbridge-magisk-kernelsu.zip
+            ${{ env.MODULE_ZIP }}

@@ -14,6 +14,16 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.NBridge">
+
+        <meta-data
+            android:name="xposedmodule"
+            android:value="true" />
+        <meta-data
+            android:name="xposeddescription"
+            android:value="Bypass Secure Element access control" />
+        <meta-data
+            android:name="xposedminversion"
+            android:value="82" />
         <service
             android:name=".NBridgeKeepAliveService"
             android:enabled="true"

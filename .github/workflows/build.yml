@@ -12,9 +12,9 @@ permissions:
   contents: write
 
 env:
-  RELEASE_TAG: v1.1.0
-  RELEASE_NAME: OTBridge v1.1.0
-  MODULE_ZIP: build/otbridge-magisk-kernelsu-v1.1.0.zip
+  VERSION_NAME: ""
+  RELEASE_TAG: ""
+  MODULE_ZIP: ""
 
 jobs:
   build:
@@ -34,8 +34,14 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Make Gradle wrapper executable
-        run: chmod +x gradlew scripts/build.sh
+      - name: Make scripts executable and determine version
+        run: |
+          chmod +x gradlew scripts/build.sh
+          VERSION_NAME=$(grep "versionName =" app/build.gradle.kts | cut -d '"' -f 2)
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "RELEASE_TAG=v$VERSION_NAME" >> $GITHUB_ENV
+          echo "RELEASE_NAME=OTBridge v$VERSION_NAME" >> $GITHUB_ENV
+          echo "MODULE_ZIP=build/otbridge-magisk-kernelsu-v$VERSION_NAME.zip" >> $GITHUB_ENV
 
       - name: Build release APK
         run: ./gradlew :app:assembleRelease

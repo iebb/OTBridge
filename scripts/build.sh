@@ -7,11 +7,9 @@ BUILD_DIR="${ROOT_DIR}/build"
 STAGING_DIR="${BUILD_DIR}/staging"
 PRIV_APP_DIR="${STAGING_DIR}/system/priv-app/ee.nekoko.nbridge"
 PERM_DIR="${STAGING_DIR}/system/etc/permissions"
-OUT_ZIP="${BUILD_DIR}/otbridge-magisk-kernelsu-v1.1.0.zip"
-
 APK_PATH=""
-VERSION="v1.1.0"
-VERSION_CODE="2"
+VERSION=""
+VERSION_CODE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -33,6 +31,16 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ -z "${VERSION}" ]]; then
+  VERSION="v$(grep "versionName =" "${ROOT_DIR}/app/build.gradle.kts" | cut -d '"' -f 2)"
+fi
+
+if [[ -z "${VERSION_CODE}" ]]; then
+  VERSION_CODE="$(grep "versionCode =" "${ROOT_DIR}/app/build.gradle.kts" | awk '{print $NF}')"
+fi
+
+OUT_ZIP="${BUILD_DIR}/otbridge-magisk-kernelsu-${VERSION}.zip"
 
 if [[ -z "${APK_PATH}" ]]; then
   APK_PATH="${ROOT_DIR}/app/build/outputs/apk/release/app-release.apk"

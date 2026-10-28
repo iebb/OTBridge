@@ -1,11 +1,6 @@
-name: Build
+name: Build legacy OTBridge (manual)
 
 on:
-  push:
-    branches:
-      - master
-      - main
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -37,11 +32,13 @@ jobs:
       - name: Make scripts executable and determine version
         run: |
           chmod +x gradlew scripts/build.sh
-          VERSION_NAME=$(grep "versionName =" app/build.gradle.kts | cut -d '"' -f 2)
-          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
-          echo "RELEASE_TAG=v$VERSION_NAME" >> $GITHUB_ENV
-          echo "RELEASE_NAME=OTBridge v$VERSION_NAME" >> $GITHUB_ENV
-          echo "MODULE_ZIP=build/otbridge-magisk-kernelsu-v$VERSION_NAME.zip" >> $GITHUB_ENV
+          VERSION_NAME=$(awk -F '\"' '/versionName =/ {print $2; exit}' app/build.gradle.kts)
+          {
+            echo "VERSION_NAME=$VERSION_NAME"
+            echo "RELEASE_TAG=v$VERSION_NAME"
+            echo "RELEASE_NAME=OTBridge v$VERSION_NAME"
+            echo "MODULE_ZIP=build/otbridge-magisk-kernelsu-v$VERSION_NAME.zip"
+          } >> "$GITHUB_ENV"
 
       - name: Build release APK
         run: ./gradlew :app:assembleRelease
@@ -62,15 +59,3 @@ jobs:
           name: otbridge-magisk-kernelsu
           path: ${{ env.MODULE_ZIP }}
           if-no-files-found: error
-
-      - name: Publish versioned release assets
-        if: github.event_name != 'pull_request'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          name: ${{ env.RELEASE_NAME }}
-          prerelease: false
-          make_latest: true
-          files: |
-            app/build/outputs/apk/release/app-release.apk
-            ${{ env.MODULE_ZIP }}
